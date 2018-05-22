@@ -6,6 +6,7 @@ import java.util.concurrent.ExecutorService;
 import javax.annotation.concurrent.GuardedBy;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
 
 import io.grpc.Attributes;
@@ -40,7 +41,7 @@ public class AddressChannelNameResolver extends NameResolver {
     public AddressChannelNameResolver(String name, GrpcChannelProperties properties, Attributes attributes, SharedResourceHolder.Resource<ExecutorService> executorResource) {
         this.name = name;
         this.properties = properties;
-        this.attributes = attributes;
+        this.attributes = Preconditions.checkNotNull(attributes,"attributes");
         this.executorResource = executorResource;
     }
 
@@ -106,7 +107,7 @@ public class AddressChannelNameResolver extends NameResolver {
                     EquivalentAddressGroup addressGroup = new EquivalentAddressGroup(new InetSocketAddress(host, port), Attributes.EMPTY);
                     equivalentAddressGroups.add(addressGroup);
                 }
-                savedListener.onAddresses(equivalentAddressGroups, Attributes.EMPTY);
+                savedListener.onAddresses(equivalentAddressGroups, attributes);
             } finally {
                 synchronized (AddressChannelNameResolver.this) {
                     resolving = false;

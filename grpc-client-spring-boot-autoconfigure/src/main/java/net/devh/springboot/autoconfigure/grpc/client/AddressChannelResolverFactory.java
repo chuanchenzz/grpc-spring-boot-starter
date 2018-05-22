@@ -8,24 +8,28 @@ import io.grpc.Attributes;
 import io.grpc.NameResolver;
 import io.grpc.NameResolverProvider;
 import io.grpc.internal.GrpcUtil;
+import org.springframework.boot.autoconfigure.web.ServerProperties;
 
 /**
  * User: Michael
  * Email: yidongnan@gmail.com
  * Date: 5/17/16
  */
-public class AddressChannelResolverFactory extends NameResolverProvider {
+public class AddressChannelResolverFactory extends BaseNameResolverProvider {
 
     private final GrpcChannelsProperties properties;
 
-    public AddressChannelResolverFactory(GrpcChannelsProperties properties) {
+    private final Attributes attributes;
+
+    public AddressChannelResolverFactory(GrpcChannelsProperties properties, ServerConfigProperties serverProperties) {
         this.properties = properties;
+        this.attributes = serverPropertiesResolver.resolve(serverProperties);
     }
 
     @Nullable
     @Override
     public NameResolver newNameResolver(URI targetUri, Attributes params) {
-        return new AddressChannelNameResolver(targetUri.toString(), properties.getChannel(targetUri.toString()), params, GrpcUtil.SHARED_CHANNEL_EXECUTOR);
+        return new AddressChannelNameResolver(targetUri.toString(), properties.getChannel(targetUri.toString()), this.attributes, GrpcUtil.SHARED_CHANNEL_EXECUTOR);
     }
 
     @Override
@@ -42,4 +46,6 @@ public class AddressChannelResolverFactory extends NameResolverProvider {
     protected int priority() {
         return 5;
     }
+
+
 }

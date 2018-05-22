@@ -2,7 +2,7 @@ package net.devh.springboot.autoconfigure.grpc.client;
 
 import java.util.List;
 
-public class ServerConfigProperties {
+public class ServerConfigProperties implements BaseNameResolverProvider.Properties{
     private List<MethodConfig> methodConfigList;
     private RetryThrottling retryThrottling;
 
