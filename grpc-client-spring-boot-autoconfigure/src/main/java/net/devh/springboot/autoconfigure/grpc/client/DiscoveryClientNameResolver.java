@@ -1,40 +1,34 @@
 package net.devh.springboot.autoconfigure.grpc.client;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import io.grpc.Attributes;
+import io.grpc.EquivalentAddressGroup;
+import io.grpc.NameResolver;
+import io.grpc.Status;
+import io.grpc.internal.SharedResourceHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.util.CollectionUtils;
+
+import javax.annotation.concurrent.GuardedBy;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import javax.annotation.concurrent.GuardedBy;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.springframework.cloud.client.ServiceInstance;
-import org.springframework.cloud.client.discovery.DiscoveryClient;
-
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-
-import io.grpc.Attributes;
-import io.grpc.EquivalentAddressGroup;
-import io.grpc.NameResolver;
-import io.grpc.Status;
-import io.grpc.internal.SharedResourceHolder;
-import lombok.extern.slf4j.Slf4j;
-
-/**
- * User: Michael
- * Email: yidongnan@gmail.com
- * Date: 5/17/16
- */
-@Slf4j
-public class DiscoveryClientNameResolver extends NameResolver {
-
+public class DiscoveryClientNameResolver extends NameResolver{
+    private static final Logger logger = LoggerFactory.getLogger(DiscoveryClientNameResolver.class);
     private final String name;
     private final DiscoveryClient client;
-    private final Attributes attributes;
     private final SharedResourceHolder.Resource<ScheduledExecutorService> timerServiceResource;
     private final SharedResourceHolder.Resource<ExecutorService> executorResource;
+    private Attributes attributes;
     @GuardedBy("this")
     private boolean shutdown;
     @GuardedBy("this")
@@ -50,14 +44,14 @@ public class DiscoveryClientNameResolver extends NameResolver {
     @GuardedBy("this")
     private List<ServiceInstance> serviceInstanceList;
 
-    public DiscoveryClientNameResolver(String name, DiscoveryClient client, Attributes attributes, SharedResourceHolder.Resource<ScheduledExecutorService> timerServiceResource,
-                                       SharedResourceHolder.Resource<ExecutorService> executorResource) {
+    public DiscoveryClientNameResolver(String name, DiscoveryClient client, SharedResourceHolder.Resource<ScheduledExecutorService> timerServiceResource,
+                                       SharedResourceHolder.Resource<ExecutorService> executorResource, Attributes attributes) {
         this.name = name;
         this.client = client;
-        this.attributes = attributes;
         this.timerServiceResource = timerServiceResource;
         this.executorResource = executorResource;
         this.serviceInstanceList = Lists.newArrayList();
+        this.attributes = Preconditions.checkNotNull(attributes,"attributes");
     }
 
     @Override
@@ -107,7 +101,7 @@ public class DiscoveryClientNameResolver extends NameResolver {
                     return;
                 }
 
-                if (CollectionUtils.isNotEmpty(newServiceInstanceList)) {
+                if (!CollectionUtils.isEmpty(newServiceInstanceList)) {
                     if (isNeedToUpdateServiceInstanceList(newServiceInstanceList)) {
                         serviceInstanceList = newServiceInstanceList;
                     } else {
@@ -118,14 +112,14 @@ public class DiscoveryClientNameResolver extends NameResolver {
                         Map<String, String> metadata = serviceInstance.getMetadata();
                         if (metadata.get("gRPC") != null) {
                             Integer port = Integer.valueOf(metadata.get("gRPC"));
-                            log.info("Found gRPC server {} {}:{}", name, serviceInstance.getHost(), port);
-                            EquivalentAddressGroup addressGroup = new EquivalentAddressGroup(new InetSocketAddress(serviceInstance.getHost(), port), Attributes.EMPTY);
+                            logger.info("Found gRPC server {} {}:{}", name, serviceInstance.getHost(), port);
+                            EquivalentAddressGroup addressGroup = new EquivalentAddressGroup(new InetSocketAddress(serviceInstance.getHost(), port),Attributes.EMPTY);
                             equivalentAddressGroups.add(addressGroup);
                         } else {
-                            log.error("Can not found gRPC server {}", name);
+                            logger.error("Can not found gRPC server {}", name);
                         }
                     }
-                    savedListener.onAddresses(equivalentAddressGroups, Attributes.EMPTY);
+                    savedListener.onAddresses(equivalentAddressGroups, attributes);
                 } else {
                     savedListener.onError(Status.UNAVAILABLE.withCause(new RuntimeException("UNAVAILABLE: NameResolver returned an empty list")));
                 }
@@ -148,15 +142,19 @@ public class DiscoveryClientNameResolver extends NameResolver {
                     }
                 }
                 if (!isSame) {
-                    log.info("Ready to update {} server info group list", name);
+                    logger.info("Ready to update {} server info group list", name);
                     return true;
                 }
             }
         } else {
-            log.info("Ready to update {} server info group list", name);
+            logger.info("Ready to update {} server info group list", name);
             return true;
         }
         return false;
+    }
+
+    private Map<String,Object> resolveServerConfig(){
+        return Maps.newHashMap();
     }
 
     @GuardedBy("this")

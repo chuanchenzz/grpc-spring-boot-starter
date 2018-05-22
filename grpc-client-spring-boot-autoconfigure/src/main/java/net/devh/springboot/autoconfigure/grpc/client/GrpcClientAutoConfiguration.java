@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.cloud.sleuth.Tracer;
@@ -24,6 +25,12 @@ import io.grpc.util.RoundRobinLoadBalancerFactory;
 @EnableConfigurationProperties
 @ConditionalOnClass({GrpcChannelFactory.class})
 public class GrpcClientAutoConfiguration {
+
+    @Bean
+    @ConfigurationProperties(prefix = "grpc.client.serverConfig")
+    public ServerConfigProperties serverConfigProperties() {
+        return new ServerConfigProperties();
+    }
 
     @ConditionalOnMissingBean
     @Bean
@@ -49,6 +56,11 @@ public class GrpcClientAutoConfiguration {
     }
 
     @Bean
+    public DiscoveryClientResolverFactory grpcNameResolverFactory(DiscoveryClient discoveryClient, ServerConfigProperties serverConfigProperties) {
+        return new DiscoveryClientResolverFactory(discoveryClient, serverConfigProperties);
+    }
+
+    @Bean
     @ConditionalOnClass(GrpcClient.class)
     public GrpcClientBeanPostProcessor grpcClientBeanPostProcessor() {
         return new GrpcClientBeanPostProcessor();
@@ -60,9 +72,9 @@ public class GrpcClientAutoConfiguration {
 
         @ConditionalOnMissingBean
         @Bean
-        public GrpcChannelFactory discoveryClientChannelFactory(GrpcChannelsProperties channels, DiscoveryClient discoveryClient, LoadBalancer.Factory loadBalancerFactory,
-            GlobalClientInterceptorRegistry globalClientInterceptorRegistry) {
-            return new DiscoveryClientChannelFactory(channels, discoveryClient, loadBalancerFactory, globalClientInterceptorRegistry);
+        public GrpcChannelFactory discoveryClientChannelFactory(GrpcChannelsProperties grpcChannelsProperties, LoadBalancer.Factory loadBalancerFactory,
+                                                                GlobalClientInterceptorRegistry globalClientInterceptorRegistry, DiscoveryClientResolverFactory nameResolverFactory) {
+            return new DiscoveryClientChannelFactory(grpcChannelsProperties, loadBalancerFactory, globalClientInterceptorRegistry, nameResolverFactory);
         }
     }
 
