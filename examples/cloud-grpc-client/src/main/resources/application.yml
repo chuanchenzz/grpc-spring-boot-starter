@@ -12,3 +12,24 @@ eureka:
     fetch-registry: true
     service-url:
       defaultZone: http://localhost:8761/eureka/
+grpc:
+  client:
+    spring-cloud-server:
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      enableRetry: true
+      maxRetryAttempts: 5
+    serverConfig:
+      methodConfigList:
+        - nameList:
+            - service: cloud-grpc-server
+          retryPolicy:
+            maxAttempts: 5
+            initialBackoff: 0.1s
+            maxBackoff: 1s
+            backoffMultiplier: 2
+            retryableStatusCodes:
+              - UNAVAILABLE
+      retryThrottling:
+        maxTokens: 10
+        tokenRatio: 0.2
