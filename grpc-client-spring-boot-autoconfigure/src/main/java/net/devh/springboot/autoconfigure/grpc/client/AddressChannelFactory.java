@@ -11,7 +11,6 @@ import io.grpc.Channel;
 import io.grpc.ClientInterceptor;
 import io.grpc.ClientInterceptors;
 import io.grpc.LoadBalancer;
-import io.grpc.NameResolver;
 import io.grpc.netty.NettyChannelBuilder;
 
 /**
@@ -22,13 +21,13 @@ import io.grpc.netty.NettyChannelBuilder;
 public class AddressChannelFactory implements GrpcChannelFactory {
     private final GrpcChannelsProperties properties;
     private final LoadBalancer.Factory loadBalancerFactory;
-    private final NameResolver.Factory nameResolverFactory;
+    private final AddressChannelResolverFactory addressChannelResolverFactory;
     private final GlobalClientInterceptorRegistry globalClientInterceptorRegistry;
 
-    public AddressChannelFactory(GrpcChannelsProperties properties, LoadBalancer.Factory loadBalancerFactory, GlobalClientInterceptorRegistry globalClientInterceptorRegistry) {
+    public AddressChannelFactory(GrpcChannelsProperties properties, LoadBalancer.Factory loadBalancerFactory, GlobalClientInterceptorRegistry globalClientInterceptorRegistry,AddressChannelResolverFactory addressChannelResolverFactory) {
         this.properties = properties;
         this.loadBalancerFactory = loadBalancerFactory;
-        this.nameResolverFactory = new AddressChannelResolverFactory(properties);
+        this.addressChannelResolverFactory = addressChannelResolverFactory;
         this.globalClientInterceptorRegistry = globalClientInterceptorRegistry;
     }
 
@@ -42,7 +41,7 @@ public class AddressChannelFactory implements GrpcChannelFactory {
         GrpcChannelProperties channelProperties = properties.getChannel(name);
         NettyChannelBuilder builder = NettyChannelBuilder.forTarget(name)
                 .loadBalancerFactory(loadBalancerFactory)
-                .nameResolverFactory(nameResolverFactory);
+                .nameResolverFactory(addressChannelResolverFactory);
         if(channelProperties.isEnableRetry() && channelProperties.getMaxRetryAttempts() > 0){
             builder.enableRetry().maxRetryAttempts(channelProperties.getMaxRetryAttempts());
         }

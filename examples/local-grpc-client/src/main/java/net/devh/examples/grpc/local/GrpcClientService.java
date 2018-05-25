@@ -4,7 +4,6 @@ import net.devh.examples.grpc.lib.HelloReply;
 import net.devh.examples.grpc.lib.HelloRequest;
 import net.devh.examples.grpc.lib.SimpleGrpc;
 import net.devh.springboot.autoconfigure.grpc.client.GrpcClient;
-
 import org.springframework.stereotype.Service;
 
 import io.grpc.Channel;

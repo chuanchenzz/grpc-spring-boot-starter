@@ -1,4 +1,4 @@
-package net.devh.springboot.autoconfigure.grpc.client;
+package net.devh.springboot.autoconfigure.grpc.client.model;
 
 import java.util.List;
 

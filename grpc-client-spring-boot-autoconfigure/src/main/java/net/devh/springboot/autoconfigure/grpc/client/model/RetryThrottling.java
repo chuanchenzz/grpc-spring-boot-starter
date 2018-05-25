@@ -1,4 +1,4 @@
-package net.devh.springboot.autoconfigure.grpc.client;
+package net.devh.springboot.autoconfigure.grpc.client.model;
 
 public class RetryThrottling {
     private int maxTokens;

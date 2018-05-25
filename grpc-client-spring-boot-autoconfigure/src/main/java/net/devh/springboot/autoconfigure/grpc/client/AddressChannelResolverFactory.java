@@ -6,9 +6,7 @@ import javax.annotation.Nullable;
 
 import io.grpc.Attributes;
 import io.grpc.NameResolver;
-import io.grpc.NameResolverProvider;
 import io.grpc.internal.GrpcUtil;
-import org.springframework.boot.autoconfigure.web.ServerProperties;
 
 /**
  * User: Michael

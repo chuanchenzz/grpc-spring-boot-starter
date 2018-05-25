@@ -1,11 +1,10 @@
-package net.devh.springboot.autoconfigure.grpc.client;
+package net.devh.springboot.autoconfigure.grpc.client.model;
 
+import io.grpc.Metadata;
 import org.springframework.cloud.sleuth.Span;
 import org.springframework.cloud.sleuth.SpanInjector;
 
 import java.util.Map;
-
-import io.grpc.Metadata;
 
 /**
  * User: Michael

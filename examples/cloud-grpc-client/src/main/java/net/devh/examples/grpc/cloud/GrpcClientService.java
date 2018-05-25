@@ -19,10 +19,23 @@ public class GrpcClientService {
 
     @GrpcClient("cloud-grpc-server")
     private Channel serverChannel;
+    private SimpleGrpc.SimpleBlockingStub stub;
 
     public String sendMessage(String name) {
-        SimpleGrpc.SimpleBlockingStub stub = SimpleGrpc.newBlockingStub(serverChannel);
-        HelloReply response = stub.sayHello(HelloRequest.newBuilder().setName(name).build());
+//        SimpleGrpc.SimpleBlockingStub stub = SimpleGrpc.newBlockingStub(serverChannel);
+        HelloReply response = null;
+        for (int i = 0; i < 10; i++){
+            response = getInstance().sayHello(HelloRequest.newBuilder().setName(name).build());
+        }
         return response.getMessage();
+    }
+
+    public SimpleGrpc.SimpleBlockingStub getInstance(){
+        if(stub == null){
+            synchronized (this){
+                stub = SimpleGrpc.newBlockingStub(serverChannel);
+            }
+        }
+        return stub;
     }
 }

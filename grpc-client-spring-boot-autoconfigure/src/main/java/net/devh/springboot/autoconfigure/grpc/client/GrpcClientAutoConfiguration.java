@@ -1,11 +1,11 @@
 package net.devh.springboot.autoconfigure.grpc.client;
 
+import io.grpc.LoadBalancer;
+import io.grpc.util.RoundRobinLoadBalancerFactory;
+import net.devh.springboot.autoconfigure.grpc.client.model.MetadataInjector;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.*;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
@@ -13,13 +13,9 @@ import org.springframework.cloud.sleuth.Tracer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import io.grpc.LoadBalancer;
-import io.grpc.util.RoundRobinLoadBalancerFactory;
-
 /**
- * User: Michael
- * Email: yidongnan@gmail.com
- * Date: 5/17/16
+ * User: chuanchen
+ * Date: 5/23/18
  */
 @Configuration
 @EnableConfigurationProperties
@@ -27,37 +23,61 @@ import io.grpc.util.RoundRobinLoadBalancerFactory;
 public class GrpcClientAutoConfiguration {
 
     @Bean
-    @ConfigurationProperties(prefix = "grpc.client.serverConfig")
+    @ConfigurationProperties(prefix = "grpc.client.server-config")
     public ServerConfigProperties serverConfigProperties() {
         return new ServerConfigProperties();
     }
 
-    @ConditionalOnMissingBean
     @Bean
+    @ConditionalOnMissingBean(GrpcChannelsProperties.class)
     public GrpcChannelsProperties grpcChannelsProperties() {
         return new GrpcChannelsProperties();
     }
 
     @Bean
-    public GlobalClientInterceptorRegistry globalClientInterceptorRegistry() {
+    public GlobalClientInterceptorRegistry globalClientInterceptorRegistry(DiscoveryClient discoveryClient) {
         return new GlobalClientInterceptorRegistry();
     }
 
-    @ConditionalOnMissingBean
     @Bean
+    @ConditionalOnMissingBean(LoadBalancer.Factory.class)
     public LoadBalancer.Factory grpcLoadBalancerFactory() {
         return RoundRobinLoadBalancerFactory.getInstance();
     }
 
-    @ConditionalOnMissingBean(value = GrpcChannelFactory.class, type = "org.springframework.cloud.client.discovery.DiscoveryClient")
-    @Bean
-    public GrpcChannelFactory addressChannelFactory(GrpcChannelsProperties channels, LoadBalancer.Factory loadBalancerFactory, GlobalClientInterceptorRegistry globalClientInterceptorRegistry) {
-        return new AddressChannelFactory(channels, loadBalancerFactory, globalClientInterceptorRegistry);
+    @Configuration
+    @ConditionalOnMissingBean(GrpcChannelFactory.class)
+    protected static class AddressGrpcClientAutoConfiguration {
+        protected AddressGrpcClientAutoConfiguration() {
+        }
+
+        @Bean
+        public AddressChannelResolverFactory channelResolverFactory(GrpcChannelsProperties channelsProperties, ServerConfigProperties serverConfigProperties) {
+            return new AddressChannelResolverFactory(channelsProperties, serverConfigProperties);
+        }
+
+        @Bean
+        public GrpcChannelFactory addressChannelFactory(GrpcChannelsProperties channelsProperties, LoadBalancer.Factory loadBalancerFactory, GlobalClientInterceptorRegistry globalClientInterceptorRegistry, AddressChannelResolverFactory channelResolverFactory) {
+            return new AddressChannelFactory(channelsProperties, loadBalancerFactory, globalClientInterceptorRegistry, channelResolverFactory);
+        }
     }
 
-    @Bean
-    public DiscoveryClientResolverFactory grpcNameResolverFactory(DiscoveryClient discoveryClient, ServerConfigProperties serverConfigProperties) {
-        return new DiscoveryClientResolverFactory(discoveryClient, serverConfigProperties);
+    @Configuration
+    protected static class DiscoveryGrpcClientAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean(DiscoveryClientResolverFactory.class)
+        public DiscoveryClientResolverFactory grpcNameResolverFactory(DiscoveryClient discoveryClient, ServerConfigProperties serverConfigProperties) {
+            return new DiscoveryClientResolverFactory(discoveryClient, serverConfigProperties);
+        }
+
+        @ConditionalOnMissingBean
+        @Bean
+        public GrpcChannelFactory discoveryClientChannelFactory(GrpcChannelsProperties grpcChannelsProperties, LoadBalancer.Factory loadBalancerFactory,
+                                                                GlobalClientInterceptorRegistry globalClientInterceptorRegistry, DiscoveryClientResolverFactory nameResolverFactory) {
+            return new DiscoveryClientChannelFactory(grpcChannelsProperties, loadBalancerFactory, globalClientInterceptorRegistry, nameResolverFactory);
+        }
+
     }
 
     @Bean
@@ -67,21 +87,11 @@ public class GrpcClientAutoConfiguration {
     }
 
     @Configuration
-    @ConditionalOnBean(DiscoveryClient.class)
-    protected static class DiscoveryGrpcClientAutoConfiguration {
-
-        @ConditionalOnMissingBean
-        @Bean
-        public GrpcChannelFactory discoveryClientChannelFactory(GrpcChannelsProperties grpcChannelsProperties, LoadBalancer.Factory loadBalancerFactory,
-                                                                GlobalClientInterceptorRegistry globalClientInterceptorRegistry, DiscoveryClientResolverFactory nameResolverFactory) {
-            return new DiscoveryClientChannelFactory(grpcChannelsProperties, loadBalancerFactory, globalClientInterceptorRegistry, nameResolverFactory);
-        }
-    }
-
-    @Configuration
     @ConditionalOnProperty(value = "spring.sleuth.scheduled.enabled", matchIfMissing = true)
     @ConditionalOnClass(Tracer.class)
     protected static class TraceClientAutoConfiguration {
+        protected TraceClientAutoConfiguration() {
+        }
 
         @Bean
         public BeanPostProcessor clientInterceptorPostProcessor(GlobalClientInterceptorRegistry registry) {
@@ -92,22 +102,17 @@ public class GrpcClientAutoConfiguration {
 
             private GlobalClientInterceptorRegistry registry;
 
-            public ClientInterceptorPostProcessor(
-                GlobalClientInterceptorRegistry registry) {
+            public ClientInterceptorPostProcessor(GlobalClientInterceptorRegistry registry) {
                 this.registry = registry;
             }
 
             @Override
-            public Object postProcessBeforeInitialization(Object bean,
-                String beanName)
-                throws BeansException {
+            public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
                 return bean;
             }
 
             @Override
-            public Object postProcessAfterInitialization(Object bean,
-                String beanName)
-                throws BeansException {
+            public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
                 if (bean instanceof Tracer) {
                     this.registry.addClientInterceptors(new TraceClientInterceptor((Tracer) bean, new MetadataInjector()));
                 }

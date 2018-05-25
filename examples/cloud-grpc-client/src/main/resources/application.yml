@@ -19,7 +19,7 @@ grpc:
       keepAliveWithoutCalls: true
       enableRetry: true
       maxRetryAttempts: 5
-    serverConfig:
+    server-config:
       methodConfigList:
         - nameList:
             - service: cloud-grpc-server

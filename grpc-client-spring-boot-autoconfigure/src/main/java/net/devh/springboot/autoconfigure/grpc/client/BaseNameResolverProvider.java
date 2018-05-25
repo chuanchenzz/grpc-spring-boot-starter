@@ -4,6 +4,7 @@ import com.google.common.collect.Maps;
 import io.grpc.Attributes;
 import io.grpc.NameResolverProvider;
 import io.grpc.internal.GrpcAttributes;
+import net.devh.springboot.autoconfigure.grpc.client.model.*;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 

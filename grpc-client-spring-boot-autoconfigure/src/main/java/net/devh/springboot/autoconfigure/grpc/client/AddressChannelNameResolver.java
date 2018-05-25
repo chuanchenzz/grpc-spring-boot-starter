@@ -6,7 +6,6 @@ import java.util.concurrent.ExecutorService;
 import javax.annotation.concurrent.GuardedBy;
 
 import com.google.common.base.Preconditions;
-import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
 
 import io.grpc.Attributes;
